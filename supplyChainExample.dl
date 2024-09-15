@@ -1,0 +1,53 @@
+// Relation declarations
+.decl Factory(id:symbol, location:symbol, capacity:number)
+.decl Supplier(id:symbol, location:symbol, component:symbol, leadTime:number)
+.decl DistributionCenter(id:symbol, location:symbol, capacity:number)
+.decl Product(id:symbol, name:symbol)
+.decl Demand(productId:symbol, locationId:symbol, quantity:number)
+.decl Inventory(locationId:symbol, productId:symbol, quantity:number)
+.decl Transportation(fromId:symbol, toId:symbol, cost:number, time:number)
+.decl Production(factoryId:symbol, productId:symbol, quantity:number)
+
+// Input facts
+.input Factory
+.input Supplier
+.input DistributionCenter
+.input Product
+.input Demand
+.input Inventory
+.input Transportation
+.input Production
+
+// Rules
+.decl TotalDemand(productId:symbol, totalQuantity:number)
+//TotalDemand(P, T) :- T = sum Q : Demand(P, _, Q).
+TotalDemand(P, T) :- Demand(P, _, _), T = sum Q : { Demand(P, _, Q) }.
+
+.decl Shortage(productId:symbol, locationId:symbol, amount:number)
+Shortage(P, L, D - I) :- Demand(P, L, D), Inventory(L, P, I), D > I.
+
+.decl OptimalProduction(factoryId:symbol, productId:symbol, quantity:number)
+OptimalProduction(F, P, Q) :- 
+    Factory(F, _, C),
+    TotalDemand(P, TD),
+    Shortage(P, _, _),
+    Q = min(C, TD).
+
+.decl OptimalRoute(productId:symbol, fromId:symbol, toId:symbol)
+OptimalRoute(P, F, T) :-
+    Shortage(P, T, _),
+    Production(F, P, _),
+    Transportation(F, T, C, _),
+    C = min C2 : { Transportation(F2, T, C2, _), Production(F2, P, _) }.
+
+.decl PotentialDisruption(supplierId:symbol, component:symbol, impact:number)
+PotentialDisruption(S, C, I) :-
+    Supplier(S, _, C, LT),
+    I = LT * sum Q : { Production(_, _, Q), LT > 30 }.  // Assuming lead times over 30 days are risky
+
+// Output declarations
+.output TotalDemand
+.output Shortage
+.output OptimalProduction
+.output OptimalRoute
+.output PotentialDisruption
